@@ -1,0 +1,26 @@
+{
+  "name": "email-server",
+  "version": "1.0.0",
+  "description": "An Express.js server that accepts contact form data, validates reCAPTCHA score and sends email.",
+  "start": "app.js",
+  "scripts": {
+    "lint": "./node_modules/.bin/eslint server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nicky Yim",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^7.18.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "prettier": "2.2.1"
+  },
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "nodejs-nodemailer-outlook": "^1.2.3",
+    "nodemailer": "^6.4.17"
+  }
+}
