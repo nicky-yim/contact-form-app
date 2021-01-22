@@ -1,35 +1,84 @@
 const dotenv = require('dotenv');
+const { google } = require('googleapis');
 const bodyParser = require('body-parser');
 const express = require('express');
-const nodeoutlook = require('nodejs-nodemailer-outlook');
+const nodemailer = require('nodemailer');
 
 dotenv.config();
 
 const port = process.env.PORT || 3000;
 const app = express();
-app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-const contactAddress = 'test@test.com';
+const { OAuth2 } = google.auth;
+const OAUTH_PLAYGROUND = 'https://developers.google.com/oauthplayground';
 
-app.post('/contact', function (req, res) {
-  nodeoutlook.sendEmail({
+const createTransporter = async () => {
+  const oauth2Client = new OAuth2(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    OAUTH_PLAYGROUND
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: process.env.REFRESH_TOKEN,
+  });
+
+  const accessToken = await new Promise((resolve, reject) => {
+    oauth2Client.getAccessToken((err, token) => {
+      if (err) {
+        reject('Failed to retrieve access token');
+      }
+      resolve(token);
+    });
+  });
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
     auth: {
-      user: process.env.EMAIL_ADDRESS,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-    from: 'test@outlook.com',
-    to: contactAddress,
-    subject: 'Test',
-    text: 'TEST TEXT',
-    onError: e => {
-      console.log(e);
-      res.status(500).send(e);
-    },
-    onSuccess: i => {
-      console.log(i);
-      res.json({ success: true });
+      type: 'OAuth2',
+      user: process.env.EMAIL_ACCOUNT,
+      accessToken,
+      clientId: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      refreshToken: process.env.REFRESH_TOKEN,
     },
   });
+
+  return transporter;
+};
+
+const sendEmail = async (emailOptions, onSuccess, onError) => {
+  let emailTransporter = await createTransporter();
+  await emailTransporter.sendMail(emailOptions, (err, info) => {
+    if (err) {
+      onError(err);
+    } else {
+      onSuccess(info);
+    }
+  });
+};
+
+app.post('/api/contact', function (req, res) {
+  const { name, from, subject, text } = req.body;
+
+  sendEmail(
+    {
+      from: `${name} <${from}>`,
+      replyTo: from,
+      to: process.env.EMAIL_ACCOUNT,
+      subject: subject || 'No subject',
+      text: text || 'No message',
+    },
+    info => {
+      console.log(info);
+      res.json({ success: true });
+    },
+    err => {
+      console.log(err);
+      res.status(500).send(err);
+    }
+  );
 });
 
 app.listen(port);
