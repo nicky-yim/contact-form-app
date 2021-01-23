@@ -1,2 +1,2 @@
 # email-server
- An Express.js server that accepts contact form data, validate reCAPTCHA score and sends email.
+ A simple full stack contact form app with reCAPTCHA validation that handles and forwards submitted form data to Gmail account.

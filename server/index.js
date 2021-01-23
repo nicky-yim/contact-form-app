@@ -1,4 +1,5 @@
 const dotenv = require('dotenv');
+const path = require('path');
 const { google } = require('googleapis');
 const bodyParser = require('body-parser');
 const express = require('express');
@@ -6,9 +7,10 @@ const nodemailer = require('nodemailer');
 
 dotenv.config();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 9000;
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.resolve(__dirname, '../client/build')));
 
 const { OAuth2 } = google.auth;
 const OAUTH_PLAYGROUND = 'https://developers.google.com/oauthplayground';
@@ -59,7 +61,7 @@ const sendEmail = async (emailOptions, onSuccess, onError) => {
   });
 };
 
-app.post('/api/contact', function (req, res) {
+app.post('/api/contact', (req, res) => {
   const { name, from, subject, text } = req.body;
 
   sendEmail(
@@ -79,6 +81,10 @@ app.post('/api/contact', function (req, res) {
       res.status(500).send(err);
     }
   );
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../client/build', 'index.html'));
 });
 
 app.listen(port);
