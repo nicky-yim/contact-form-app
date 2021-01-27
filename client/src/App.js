@@ -12,6 +12,7 @@ import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Snackbar from '@material-ui/core/Snackbar';
 import MuiAlert from '@material-ui/lab/Alert';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 const useStyles = makeStyles(theme => ({
   paper: {
@@ -67,6 +68,7 @@ const App = () => {
   const [isSnackbarOpen, setIsSnackOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(true);
   const [message, setMessage] = useState('');
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const handleChange = field => e => {
     const { value } = e.target;
@@ -102,31 +104,31 @@ const App = () => {
     if (!loading) {
       setLoading(true);
 
-      let isValid = true;
-      Object.keys(values).map(
-        field => (isValid = isValid && validate(field, values[field]))
+      const isValid = Object.keys(values).every(field =>
+        validate(field, values[field])
       );
 
-      if (isValid) {
+      if (isValid && executeRecaptcha) {
+        const token = await executeRecaptcha('contact');
         const { name, email, subject, message } = values;
         const payload = {
           name,
           email,
           subject,
           message,
+          token,
         };
 
         await axios
           .post(`/api/contact`, payload)
-          .then(() => {
-            setMessage('Message successfully sent!');
+          .then(({ data }) => {
+            setMessage(data?.message || 'Message successfully sent');
             setIsSuccess(true);
             handleReset();
           })
           .catch(err => {
-            setMessage('Unable to send message!');
+            setMessage(err?.response?.data?.message || 'Unable to send message');
             setIsSuccess(false);
-            console.log(err?.response?.data?.error);
           });
 
         setIsSnackOpen(true);
@@ -212,12 +214,7 @@ const App = () => {
           />
           <Grid container spacing={5} justify="center" className={classes.grid}>
             <Grid item>
-              <Button
-                variant="contained"
-                color="invariant"
-                size="large"
-                onClick={handleReset}
-              >
+              <Button variant="contained" size="large" onClick={handleReset}>
                 Reset
               </Button>
             </Grid>

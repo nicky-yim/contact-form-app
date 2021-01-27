@@ -3,6 +3,7 @@ const path = require('path');
 const { google } = require('googleapis');
 const express = require('express');
 const nodemailer = require('nodemailer');
+const fetch = require('node-fetch');
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.static(path.resolve(__dirname, '../client/build')));
 
 const { OAuth2 } = google.auth;
 const OAUTH_PLAYGROUND = 'https://developers.google.com/oauthplayground';
+const RECAPTCHA_VERIFY = 'https://www.google.com/recaptcha/api/siteverify';
 
 const createTransporter = async () => {
   const oauth2Client = new OAuth2(
@@ -61,26 +63,51 @@ const sendEmail = async (emailOptions, onSuccess, onError) => {
   });
 };
 
-app.post('/api/contact', (req, res) => {
-  const { name, email, subject, message } = req.body;
+const verifyToken = async (token, onSuccess, onError) => {
+  try {
+    const res = await fetch(
+      `${RECAPTCHA_VERIFY}?secret=${process.env.RECAPTCHA_SECRET}&response=${token}`
+    );
+    const json = await res.json();
 
-  sendEmail(
-    {
-      from: `${name} <${email}>`,
-      replyTo: email,
-      to: process.env.EMAIL_ACCOUNT,
-      subject: subject || 'No subject',
-      text: message || 'No message',
-    },
-    info => {
-      console.log(info);
-      res.json({ success: true });
-    },
-    err => {
-      console.log(err);
-      res.status(500).json({ success: false, error: err });
+    onSuccess(json);
+  } catch (err) {
+    onError(err);
+  }
+};
+
+app.post('/api/contact', (req, res) => {
+  const { name, email, subject, message, token } = req.body;
+
+  const onSuccess = json => {
+    if (!json || !json.success || json.score < 0.5) {
+      res.status(500).json({ message: `No bots allowed ⛔` });
     }
-  );
+
+    sendEmail(
+      {
+        from: `${name} <${email}>`,
+        replyTo: email,
+        to: process.env.EMAIL_ACCOUNT,
+        subject: subject || 'No subject',
+        text: message || 'No message',
+      },
+      info => {
+        console.log(info);
+        res.json({ message: `Email successfully sent ⭕` });
+      },
+      err => {
+        console.log(err);
+        res.status(500).json({ message: `Unable to send mail ❌` });
+      }
+    );
+  };
+
+  const onError = () => {
+    res.status(500).json({ message: `Unable to verify request ❌` });
+  };
+
+  verifyToken(token, onSuccess, onError);
 });
 
 app.get('*', (req, res) => {
