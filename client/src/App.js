@@ -45,9 +45,7 @@ const useStyles = makeStyles(theme => ({
   },
 }));
 
-const Alert = props => {
-  return <MuiAlert elevation={6} variant="filled" {...props} />;
-};
+const Alert = props => <MuiAlert elevation={6} variant="filled" {...props} />;
 
 const App = () => {
   const classes = useStyles();
@@ -127,7 +125,9 @@ const App = () => {
             handleReset();
           })
           .catch(err => {
-            setMessage(err?.response?.data?.message || 'Unable to send message');
+            setMessage(
+              err?.response?.data?.message || 'Unable to send message'
+            );
             setIsSuccess(false);
           });
 
@@ -151,7 +151,7 @@ const App = () => {
     <Container maxWidth="sm">
       <CssBaseline />
       <Paper className={classes.paper}>
-        <Typography align="center" component="h1" variant="h4">
+        <Typography align="center" component="h1" variant="h5">
           Contact Form App
         </Typography>
         <form className={classes.form}>
